@@ -27,6 +27,9 @@ module Mongoid::Taggable
 
     # enable indexing as default
     enable_tags_index!
+
+    # one tag collection for all
+    multiple_tag_collections!
   end
 
   module ClassMethods
@@ -42,6 +45,10 @@ module Mongoid::Taggable
 
     def tagged_with_any(*tags)
       self.any_in(:tags_array => tags.flatten)
+    end
+
+    def tags_like(tag, limit=10, sort=1)
+      tags_index_collection.find(:_id => /#{tag}/).limit(limit).sort(:_id => sort).map{ |r| [r["_id"]] }
     end
 
     def tags
@@ -62,6 +69,14 @@ module Mongoid::Taggable
       @do_tags_index = true
     end
 
+    def single_tag_collection!
+      @single_collection = true
+    end
+
+    def multiple_tag_collections!
+      @single_collection = false
+    end
+
     def tags_separator(separator = nil)
       @tags_separator = separator if separator
       @tags_separator || ','
@@ -72,7 +87,7 @@ module Mongoid::Taggable
     end
 
     def tags_index_collection
-      @tags_index_collection ||= Moped::Collection.new(self.collection.database, tags_index_collection_name)
+      Moped::Collection.new(self.collection.database, tags_index_collection_name)
     end
 
     def save_tags_index!
